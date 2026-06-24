@@ -2,6 +2,7 @@ import telebot
 import os
 from dotenv import load_dotenv
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+from telebot import types
 
 load_dotenv()
 API_TOKEN = os.environ.get('API_TOKEN')
@@ -10,9 +11,10 @@ bot = telebot.TeleBot(API_TOKEN)
 # Handle '/start'
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder= 'متن موردنظر خود را بنویسید.')
-    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظر، پیشنهاد یا انتقاد'))
-    markup.add('📚 پیشنهاد دروس ترم تابستان', '🤔 دانشجوها چی می‌گن؟') #another way to create a button
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder= 'Chat with رصدخـــان')
+    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
+    markup.add('📚 پیشنهاد دروس ترم تابستان') #another way to create a button
+    markup.add('🤔 دانشجوها چی می‌گن؟')
     first_name = message.from_user.first_name
     text = f'''سلام {first_name}. خیلی خوش اومدی.
 من <b>رصدخــــان</b> هستم. از آشنایی باهات خوشحالم. 😄🤍'''
@@ -21,14 +23,33 @@ def send_welcome(message):
 # Handle '/options'
 @bot.message_handler(commands=['options'])
 def send_options(message):
-    bot.send_message(message.chat.id, """\
-        *رصدخــــان* این‌جاست تا از پس کارهای متنوعی بربیاد! 😎
+    text = f'''<b>رصدخــــان</b> این‌جاست تا از پس کارهای متنوعی بربیاد! 😎\n
+<b>قابلیت‌های فعلی من</b>:
+🗣 دریافت <b>نظرات، پیشنهادات و انتقادات شما</b> به‌صورت ناشناس 
+(حتی می‌تونی بهمون پیشنهاد بدی که <b>جای چی توی ربات خالیه</b>)
+🔗 دریافت <b>لینک‌های مرتبط با نشریۀ رصد علم و صنعت</b> در پیام‌رسان‌های مختلف
+📚 <b>پیشنهاد دروسی که قراره در تابستون ارائه بشه</b>
+'''
+    bot.send_message(message.chat.id, text, parse_mode='HTML')
 
-*قابلیت‌های فعلی من*:
-🔗 دریافت لینک کانال رصد علم و صنعت در پیام‌رسان‌های مختلف
-📚 پیشنهاد دروسی که قراره در تابستون ارائه بشه
-🗣 دریافت نظرات، پیشنهادات و انتقادات شما به‌صورت کاملا ناشناس 
-(حتی می‌تونی بهمون پیشنهاد بدی که جای چی توی ربات خالیه)
-""", parse_mode='Markdown')
+@bot.message_handler(func = lambda message: message.text == '🔗 لینک‌های رصد')
+def send_links(message):
+    text = '''<b>نشریۀ رصد دانشگاه علم و صنعت</b> رو می‌تونی از طریق لینک‌های زیر دنبال کنی:\n
+🔹 کانال رصد علم و صنعت در تلگرام
+t.me/rasad_iust\n
+🔸 گروه دیدگاه رصد در تلگرام
+t.me/rasad_comment\n
+🤖 ربات رصدخــــان
+t.me/rasadkhan_bot\n
+🔹 کانال رصد علم و صنعت در بله
+ble.ir/rasad_iust'''
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    button1 = types.InlineKeyboardButton('🔹 کانال تلگرام', url='https://t.me/rasad_iust')
+    button2 = types.InlineKeyboardButton('🔸 گروه تلگرام', url='https://t.me/rasad_comment')
+    button3 = types.InlineKeyboardButton('🤖 ربات تلگرام', url='https://t.me/rasadkhan_bot')
+    button4 = types.InlineKeyboardButton('🔹 کانال بله', url='https://ble.ir/join/rasad_iust')
+    keyboard.row(button2, button1)
+    keyboard.row(button4, button3)
+    bot.reply_to(message, text, parse_mode='HTML', disable_web_page_preview=True, reply_markup=keyboard)
 
 bot.infinity_polling()
