@@ -112,4 +112,124 @@ def receive_voice(message):
     markup.add('🤔 دانشجوها چی می‌گن؟')
     bot.reply_to(message, text, reply_markup=markup)
 
+@bot.message_handler(func=lambda message: message.text == '📚 پیشنهاد دروس ترم تابستان')
+def suggest_courses(message):
+    remove_keyboard = ReplyKeyboardRemove()
+    text = '''سلام! به بخش پیشنهاد دروس برای ترم تابستان ١۴۰۵ خوش آمدید.🌻
+در ابتدا لازم به ذکر است که دانشگاه <b>امکان فراهم‌کردن خوابگاه برای دانشجویان غیر بومی در ترم تابستان را ندارد.</b> 
+لطفاً در صورت سکونت در تهران یا توانایی اسکان در تهران، فرم زیر را تکمیل کنید.\n
+🚨 اطلاعات شما صرفاً برای ارسال به <b>آموزش دانشگاه</b> و تحلیل جمعیت خواستار دروس استفاده می‌شود و ربات <u>هیچ اطلاعات شخصی</u> مانند نام یا شمارۀ دانشجویی شما را ذخیره نمی‌کند.\n
+✅ لطفاً <b>نام و نام خانوادگی</b> خود را وارد کنید.'''
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=remove_keyboard)
+    bot.register_next_step_handler(message, get_full_name)
+
+def get_full_name(message):
+    full_name = message.text
+    text = 'لطفاً <b>شماره دانشجویی</b> خود را وارد کنید:'
+    bot.reply_to(message, text, parse_mode='HTML')
+    bot.register_next_step_handler(message, get_student_id, full_name)
+
+def get_student_id(message, full_name):
+    student_id = message.text
+    text = '''حالا لطفاً <b>رشته و ورودی</b> خود را وارد کنید:
+(مثال: مهندسی کامپیوتر - ۱۴۰٣)'''
+
+    bot.reply_to(message, text, parse_mode='HTML')
+    bot.register_next_step_handler(message, get_major, full_name, student_id)
+
+
+def get_major(message, full_name, student_id):
+    major = message.text
+    text = '''حالا لطفاً <b>لیست دروس پیشنهادی</b> خود را به‌صورت زیر وارد کنید:
+🔸 هر درس را <b>در یک پیام جداگانه</b> ارسال کنید
+🔹 فرمت هر درس: 
+<b>نام درس - دانشکده</b>
+مثال: ریاضی ۲ - علوم پایه\n
+📌 دقت کنید:
+• اسامی دروس <b>کامل و مطابق</b> با آموزش وارد شود
+• اعداد با <b>یک فاصله</b> از کلمه جدا شوند (مثال: ریاضی ۲)\n
+✅ وقتی تمام دروس را وارد کردید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton('✅ اتمام پیشنهاد دروس'))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+    bot.register_next_step_handler(message, get_courses, full_name, student_id, major, [])
+
+
+def get_courses(message, full_name, student_id, major, courses_list):
+    if message.text == '✅ اتمام پیشنهاد دروس':
+        if len(courses_list) == 0:
+            text = '''⚠️ شما هیچ درسی وارد نکردید!\n
+لطفاً حداقل <b>یک درس</b> را با فرمت زیر وارد کنید:
+<b>نام درس - دانشکده</b>
+مثال: ریاضی ۲ - علوم پایه'''
+            bot.reply_to(message, text, parse_mode='HTML')
+            bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
+            return
+
+        send_courses_to_admin(message, full_name, student_id, major, courses_list)
+        return
+    
+    # بررسی فرمت درس
+    if ' - ' not in message.text:
+        text = '''❌ فرمت وارد شده صحیح نیست!
+
+لطفاً درس را به‌صورت زیر وارد کنید:
+<b>نام درس - دانشکده</b>
+مثال: ریاضی ۲ - علوم پایه
+
+یا اگر تمام دروس را وارد کرده‌اید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
+        bot.reply_to(message, text, parse_mode='HTML')
+        bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
+        return
+    
+    # اضافه کردن درس به لیست
+    course_name, faculty = message.text.split(' - ', 1)
+    course_name = course_name.strip()
+    faculty = faculty.strip()
+    
+    courses_list.append(f"{course_name} - {faculty}")
+    
+    text = f'''✅ درس <b>{course_name}</b> با موفقیت اضافه شد!
+
+📚 دروس ثبت‌شده تا الان:
+{chr(10).join([f"🔸 {c}" for c in courses_list])}
+
+لطفاً درس بعدی را وارد کنید یا روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
+    
+    bot.reply_to(message, text, parse_mode='HTML')
+    bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
+
+
+def send_courses_to_admin(message, full_name, student_id, major, courses_list):
+    courses_text = '\n'.join([f"🔸 {c}" for c in courses_list])
+    
+    admin_message = f'''📚 <b>پیشنهاد دروس ترم تابستان</b>\n
+👤 <b>نام و نام خانوادگی:</b> {full_name}
+🎓 <b>شماره دانشجویی:</b> {student_id}
+📚 <b>رشته و ورودی:</b> {major}\n
+📝 <b>لیست دروس پیشنهادی:</b>
+{courses_text}
+'''
+    
+    try:
+        bot.send_message(os.environ.get('ADMIN_ID'), admin_message, parse_mode='HTML')
+        markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
+        markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
+        markup.add('📚 پیشنهاد دروس ترم تابستان')
+        markup.add('🤔 دانشجوها چی می‌گن؟')
+        text = '''✅ <b>پیشنهاد دروس شما با موفقیت ثبت شد!</b> 👌🏻
+از مشارکت شما در بهبود کیفیت دروس تابستان سپاسگزاریم.
+اطلاعات شما به آموزش دانشگاه ارسال خواهد شد.'''
+        bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+        
+    except Exception as e:
+        print(f"خطا در ارسال به گروه: {e}")
+        text = '''❌ متأسفانه ارسال پیشنهادات با مشکل مواجه شد.
+لطفاً ساعاتی دیگر مجدد تلاش کنید.'''
+        markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
+        markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
+        markup.add('📚 پیشنهاد دروس ترم تابستان')
+        markup.add('🤔 دانشجوها چی می‌گن؟')
+        bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+
 bot.infinity_polling()
