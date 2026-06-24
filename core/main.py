@@ -64,14 +64,18 @@ def send_opinion(message):
 def receive_feedback(message):
     user_feedback = message.text
     feedback_to_admin = f'''پیام جدید از بخش\n <b>🗣 ارائۀ نظرات</b>:\n
-    {user_feedback}'''
+{user_feedback}'''
     try:
         bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_admin, parse_mode='HTML')
         text = '''ممنون بابت ارسال بازخوردت! 🌱
 پیام به مسئولین نشریه ارسال شد. درصورت ارسال پاسخ توسط مسئولین نشریه، اون رو برات می‌فرستم.'''
     except Exception as e:
         text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
-    bot.reply_to(message, text)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
+    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
+    markup.add('📚 پیشنهاد دروس ترم تابستان')
+    markup.add('🤔 دانشجوها چی می‌گن؟')
+    bot.reply_to(message, text, reply_markup=markup)
 
 @bot.message_handler(func = lambda message: message.text == '🤔 دانشجوها چی می‌گن؟')
 def student_voice(message):
@@ -79,7 +83,7 @@ def student_voice(message):
 درصورت تایید توسط ادمین‌ها، پیام شما از طریق کانال منتشر خواهد شد.
 این پیام به‌صورت <u>ناشناس</u> به‌دست ادمین‌ها خواهد رسید.'''
     remove_keyboard = ReplyKeyboardRemove()
-    bot.reply_to(message, text, parse_mode='HTML', remove_keyboard = ReplyKeyboardRemove())
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=remove_keyboard)
     bot.register_next_step_handler(message, receive_voice)
 
 def receive_voice(message):
@@ -92,8 +96,8 @@ def receive_voice(message):
     feedback_to_bale = f'''#ارسالی_شما
 🗣 « _{user_feedback}_ »\n
 [📬 شما هم دیدگاه خود را ارسال کنید.](https://ble.ir/MsngrBot?start=473399195A)\n
-<b>🔭 *رصد | راوی صدای دانشجو
-🆔 @rasad_iust | [Telegram](https://t.me/rasad_iust)*</b>'''
+🔭 *رصد | راوی صدای دانشجو
+🆔 @rasad_iust | [Telegram](https://t.me/rasad_iust)*'''
     try:
         bot.send_message(os.environ.get('ADMIN_GROUP_ID'), 'پیام جدید از بخش\n <b>🤔 دانشجوها چی می‌گن؟</b>:', parse_mode='HTML')
         bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_telegram, parse_mode='HTML', disable_web_page_preview=True)
@@ -102,6 +106,10 @@ def receive_voice(message):
 پیام به مسئولین نشریه ارسال شد.'''
     except Exception as e:
         text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
-    bot.reply_to(message, text)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
+    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
+    markup.add('📚 پیشنهاد دروس ترم تابستان')
+    markup.add('🤔 دانشجوها چی می‌گن؟')
+    bot.reply_to(message, text, reply_markup=markup)
 
 bot.infinity_polling()
