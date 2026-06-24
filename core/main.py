@@ -52,4 +52,24 @@ ble.ir/rasad_iust'''
     keyboard.row(button4, button3)
     bot.reply_to(message, text, parse_mode='HTML', disable_web_page_preview=True, reply_markup=keyboard)
 
+@bot.message_handler(func = lambda message: message.text == '🗣 ارائۀ نظرات')
+def send_opinion(message):
+    text = '''رویکرد ما در رصد از اولین روز تشکیل نشریه، ارتباط دوستانه و تعامل با دانشجویان در بهترین سطح بوده و خواهد بود.
+از شما دعوت می‌کنیم نظرات، پیشنهادات و انتقادات خود درمورد هر مسئلۀ کوچک یا بزرگ در رصد رو به گوش ما برسونید تا بتونیم با همکاری شما سعی در بهبود روندمون داشته باشیم. ❤️
+لازمه به این نکته توجه کنید که پیام شما <u>به‌صورت کاملا ناشناس</u> در اختیار مسئولین نشریۀ رصد علم و صنعت قرار می‌گیره. پس می‌تونی پیام خودت رو به‌صورت واضح به ما برسونی. 🤝'''
+    bot.reply_to(message, text, parse_mode='HTML')
+    bot.register_next_step_handler(message, receive_feedback)
+
+def receive_feedback(message):
+    user_feedback = message.text
+    feedback_to_admin = f'''پیام جدید از بخش\n <b>🗣 ارائۀ نظرات</b>:\n
+    {user_feedback}'''
+    try:
+        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_admin, parse_mode='HTML')
+        text = '''ممنون بابت ارسال بازخوردت! 🌱
+پیام به مسئولین نشریه ارسال شد. درصورت ارسال پاسخ توسط مسئولین نشریه، اون رو برات می‌فرستم.'''
+    except Exception as e:
+        text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
+    bot.reply_to(message, text)
+
 bot.infinity_polling()
