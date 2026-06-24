@@ -72,4 +72,34 @@ def receive_feedback(message):
         text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
     bot.reply_to(message, text)
 
+@bot.message_handler(func = lambda message: message.text == '🤔 دانشجوها چی می‌گن؟')
+def student_voice(message):
+    text = '''نظر خودت رو درمورد موضوع مطرح‌شده در کانال ارسال کن.
+درصورت تایید توسط ادمین‌ها، پیام شما از طریق کانال منتشر خواهد شد.
+این پیام به‌صورت <u>ناشناس</u> به‌دست ادمین‌ها خواهد رسید.'''
+    bot.reply_to(message, text, parse_mode='HTML')
+    bot.register_next_step_handler(message, receive_voice)
+
+def receive_voice(message):
+    user_feedback = message.text
+    feedback_to_telegram = f'''#ارسالی_شما
+🗣 « <i>{user_feedback}</i> »\n
+<a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
+<b>🔭 رصد | راوی صدای دانشجو
+🆔 @rasad_iust</b>'''
+    feedback_to_bale = f'''#ارسالی_شما
+🗣 « _{user_feedback}_ »\n
+[📬 شما هم دیدگاه خود را ارسال کنید.](https://ble.ir/MsngrBot?start=473399195A)\n
+<b>🔭 *رصد | راوی صدای دانشجو
+🆔 @rasad_iust | [Telegram](https://t.me/rasad_iust)*</b>'''
+    try:
+        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), 'پیام جدید از بخش\n <b>🤔 دانشجوها چی می‌گن؟</b>:', parse_mode='HTML')
+        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_telegram, parse_mode='HTML', disable_web_page_preview=True)
+        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_bale, parse_mode='HTML', disable_web_page_preview=True)
+        text = '''ممنون بابت ارسال بازخوردت! 🌱
+پیام به مسئولین نشریه ارسال شد.'''
+    except Exception as e:
+        text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
+    bot.reply_to(message, text)
+
 bot.infinity_polling()
