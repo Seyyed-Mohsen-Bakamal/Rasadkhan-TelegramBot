@@ -1,2 +1,4 @@
 pyTelegramBotAPI==4.34.0
 python-dotenv
+pytz
+jdatetime
