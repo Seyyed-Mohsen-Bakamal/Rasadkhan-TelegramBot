@@ -1,7 +1,7 @@
 import telebot
 import os
 from dotenv import load_dotenv
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telebot import types
 
 load_dotenv()
@@ -57,7 +57,8 @@ def send_opinion(message):
     text = '''رویکرد ما در رصد از اولین روز تشکیل نشریه، ارتباط دوستانه و تعامل با دانشجویان در بهترین سطح بوده و خواهد بود.
 از شما دعوت می‌کنیم نظرات، پیشنهادات و انتقادات خود درمورد هر مسئلۀ کوچک یا بزرگ در رصد رو به گوش ما برسونید تا بتونیم با همکاری شما سعی در بهبود روندمون داشته باشیم. ❤️
 لازمه به این نکته توجه کنید که پیام شما <u>به‌صورت کاملا ناشناس</u> در اختیار مسئولین نشریۀ رصد علم و صنعت قرار می‌گیره. پس می‌تونی پیام خودت رو به‌صورت واضح به ما برسونی. 🤝'''
-    bot.reply_to(message, text, parse_mode='HTML')
+    remove_keyboard = ReplyKeyboardRemove()
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=remove_keyboard)
     bot.register_next_step_handler(message, receive_feedback)
 
 def receive_feedback(message):
@@ -77,7 +78,8 @@ def student_voice(message):
     text = '''نظر خودت رو درمورد موضوع مطرح‌شده در کانال ارسال کن.
 درصورت تایید توسط ادمین‌ها، پیام شما از طریق کانال منتشر خواهد شد.
 این پیام به‌صورت <u>ناشناس</u> به‌دست ادمین‌ها خواهد رسید.'''
-    bot.reply_to(message, text, parse_mode='HTML')
+    remove_keyboard = ReplyKeyboardRemove()
+    bot.reply_to(message, text, parse_mode='HTML', remove_keyboard = ReplyKeyboardRemove())
     bot.register_next_step_handler(message, receive_voice)
 
 def receive_voice(message):
