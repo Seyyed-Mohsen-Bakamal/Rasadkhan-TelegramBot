@@ -191,16 +191,26 @@ def update_pending_message_status(pending_id, status, admin_id, admin_username):
     conn.commit()
     conn.close()
 
+CANCEL_BUTTON = '❌ لغو'
+
+def get_main_menu_keyboard():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='درحال چت با رصدخان (چه سعادتی!)')
+    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
+    markup.add('📚 پیشنهاد دروس ترم تابستان')
+    markup.add('🤔 دانشجوها چی می‌گن؟')
+    return markup
+
+def return_to_main_menu(message, cancel_message="عملیات لغو شد. به منوی اصلی بازگشتید."):
+    bot.reply_to(message, cancel_message, reply_markup=get_main_menu_keyboard())
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user = message.from_user
     save_or_update_user(user.id, user.username or "", user.first_name, user.last_name or "")
     log_user_action(user.id, user.username or "", "START", "کاربر ربات را استارت کرد")
     
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
-    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
-    markup.add('📚 پیشنهاد دروس ترم تابستان')
-    markup.add('🤔 دانشجوها چی می‌گن؟')
+    markup = get_main_menu_keyboard()
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     
     first_name = user.first_name
     text = f'''سلام {first_name}. خیلی خوش اومدی.
@@ -254,12 +264,17 @@ def send_opinion(message):
 از شما دعوت می‌کنیم نظرات، پیشنهادات و انتقادات خود درمورد هر مسئلۀ کوچک یا بزرگ در رصد رو به گوش ما برسونید تا بتونیم با همکاری شما سعی در بهبود روندمون داشته باشیم. ❤️
 لازمه به این نکته توجه کنید که پیام شما <u>به‌صورت کاملا ناشناس</u> در اختیار مسئولین نشریۀ رصد علم و صنعت قرار می‌گیره. پس می‌تونی پیام خودت رو به‌صورت واضح به ما برسونی. 🤝'''
     
-    remove_keyboard = ReplyKeyboardRemove()
-    bot.reply_to(message, text, parse_mode='HTML', reply_markup=remove_keyboard)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton(CANCEL_BUTTON))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     bot.register_next_step_handler(message, receive_feedback)
 
 def receive_feedback(message):
     user = message.from_user
+    if message.text == CANCEL_BUTTON:
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در بخش ارائۀ نظرات")
+        return_to_main_menu(message, "❌ ارسال نظر لغو شد.")
+        return
     user_feedback = message.text
     
     save_feedback(user.id, user.username or "", "ارائۀ نظرات", user_feedback)
@@ -275,11 +290,7 @@ def receive_feedback(message):
     except Exception as e:
         text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
     
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
-    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
-    markup.add('📚 پیشنهاد دروس ترم تابستان')
-    markup.add('🤔 دانشجوها چی می‌گن؟')
-    bot.reply_to(message, text, reply_markup=markup)
+    bot.reply_to(message, text, reply_markup=get_main_menu_keyboard())
 
 @bot.message_handler(func=lambda message: message.text == '🤔 دانشجوها چی می‌گن؟')
 def student_voice(message):
@@ -290,12 +301,17 @@ def student_voice(message):
 درصورت تایید توسط ادمین‌ها، پیام شما از طریق کانال منتشر خواهد شد.
 این پیام به‌صورت <u>ناشناس</u> به‌دست ادمین‌ها خواهد رسید.'''
     
-    remove_keyboard = ReplyKeyboardRemove()
-    bot.reply_to(message, text, parse_mode='HTML', reply_markup=remove_keyboard)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton(CANCEL_BUTTON))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     bot.register_next_step_handler(message, receive_voice)
 
 def receive_voice(message):
     user = message.from_user
+    if message.text == CANCEL_BUTTON:
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در بخش دانشجوها چی می‌گن")
+        return_to_main_menu(message, "❌ ارسال نظر لغو شد.")
+        return
     user_feedback = message.text
     
     save_feedback(user.id, user.username or "", "دانشجوها چی می‌گن", user_feedback)
@@ -303,14 +319,13 @@ def receive_voice(message):
     
     save_pending_message(user.id, user.username or "", user_feedback, message.message_id)
     
-    feedback_to_telegram = f'''📨 <b>پیام جدید از بخش "دانشجوها چی می‌گن؟"</b>
-
+    feedback_to_telegram = f'''📨 پیام جدید از بخش 
+<b>دانشجوها چی می‌گن؟</b>\n
 #ارسالی_شما
 🗣 « <i>{user_feedback}</i> »\n
 <a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
 <b>🔭 رصد | راوی صدای دانشجو
 🆔 @rasad_iust</b>'''
-
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     approve_button = types.InlineKeyboardButton("✅ تایید و ارسال به کانال", callback_data=f"approve_{user.id}")
     reject_button = types.InlineKeyboardButton("❌ رد", callback_data=f"reject_{user.id}")
@@ -337,11 +352,7 @@ def receive_voice(message):
         print(f"خطا در ارسال به گروه: {e}")
         text = '''❌ متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
     
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
-    markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
-    markup.add('📚 پیشنهاد دروس ترم تابستان')
-    markup.add('🤔 دانشجوها چی می‌گن؟')
-    bot.reply_to(message, text, reply_markup=markup)
+    bot.reply_to(message, text, reply_markup=get_main_menu_keyboard())
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
 def handle_approval(call):
@@ -387,7 +398,7 @@ def handle_approval(call):
 👤 <b>تایید شده توسط:</b> {admin.first_name} (@{admin.username or 'ندارد'})
 ⏰ <b>زمان تایید:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}'''
             
-            bot.edit_message_text(admin_message, ADMIN_GROUP_ID, message_id=call.message.message_id, parse_mode='HTML')
+            bot.edit_message_text(admin_message, ADMIN_GROUP_ID, message_id=call.message.message_id, parse_mode='HTML', reply_markup=None)
             
             bot.answer_callback_query(call.id, "✅ پیام تایید و به کانال ارسال شد!")
             
@@ -410,7 +421,7 @@ def handle_approval(call):
 👤 <b>رد شده توسط:</b> {admin.first_name} (@{admin.username or 'ندارد'})
 ⏰ <b>زمان رد:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}'''
         
-        bot.edit_message_text(ADMIN_GROUP_ID, message_id=call.message.message_id, parse_mode='HTML')
+        bot.edit_message_text(admin_message, ADMIN_GROUP_ID, message_id=call.message.message_id, parse_mode='HTML', reply_markup=None)
         
         bot.answer_callback_query(call.id, "❌ پیام رد شد!")
         
@@ -420,38 +431,55 @@ def handle_approval(call):
 def suggest_courses(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "COURSE_SUGGEST_START", "شروع فرآیند پیشنهاد دروس")
-    
-    remove_keyboard = ReplyKeyboardRemove()
     text = '''سلام! به بخش پیشنهاد دروس برای ترم تابستان ١۴۰۵ خوش آمدید.🌻
 در ابتدا لازم به ذکر است که دانشگاه <b>امکان فراهم‌کردن خوابگاه برای دانشجویان غیر بومی در ترم تابستان را ندارد.</b> 
 لطفاً در صورت سکونت در تهران یا توانایی اسکان در تهران، فرم زیر را تکمیل کنید.\n
 🚨 اطلاعات شما صرفاً برای ارسال به <b>آموزش دانشگاه</b> و تحلیل جمعیت خواستار دروس استفاده می‌شود و ربات <u>هیچ اطلاعات شخصی</u> مانند نام یا شمارۀ دانشجویی شما را ذخیره نمی‌کند.\n
 ✅ لطفاً <b>نام و نام خانوادگی</b> خود را وارد کنید.'''
-    
-    bot.reply_to(message, text, parse_mode='HTML', reply_markup=remove_keyboard)
+
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton(CANCEL_BUTTON))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     bot.register_next_step_handler(message, get_full_name)
 
 def get_full_name(message):
     user = message.from_user
+    if message.text == CANCEL_BUTTON:
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله نام و نام خانوادگی (پیشنهاد دروس)")
+        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return
     full_name = message.text
     log_user_action(user.id, user.username or "", "COURSE_FULL_NAME", f"نام وارد شده: {full_name}")
     
     text = 'لطفاً <b>شماره دانشجویی</b> خود را وارد کنید:'
-    bot.reply_to(message, text, parse_mode='HTML')
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton(CANCEL_BUTTON))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     bot.register_next_step_handler(message, get_student_id, full_name)
 
 def get_student_id(message, full_name):
     user = message.from_user
+    if message.text == CANCEL_BUTTON:
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله شماره دانشجویی (پیشنهاد دروس)")
+        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return
+    
     student_id = message.text
     log_user_action(user.id, user.username or "", "COURSE_STUDENT_ID", f"شماره دانشجویی: {student_id}")
     
     text = '''حالا لطفاً <b>رشته و ورودی</b> خود را وارد کنید:
 (مثال: مهندسی کامپیوتر - ۱۴۰٣)'''
-    bot.reply_to(message, text, parse_mode='HTML')
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton(CANCEL_BUTTON))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     bot.register_next_step_handler(message, get_major, full_name, student_id)
 
 def get_major(message, full_name, student_id):
     user = message.from_user
+    if message.text == CANCEL_BUTTON:
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله رشته و ورودی (پیشنهاد دروس)")
+        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return
     major = message.text
     log_user_action(user.id, user.username or "", "COURSE_MAJOR", f"رشته و ورودی: {major}")
     
@@ -466,12 +494,16 @@ def get_major(message, full_name, student_id):
 ✅ وقتی تمام دروس را وارد کردید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
     
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton('✅ اتمام پیشنهاد دروس'))
+    markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
     bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     bot.register_next_step_handler(message, get_courses, full_name, student_id, major, [])
 
 def get_courses(message, full_name, student_id, major, courses_list):
     user = message.from_user
+    if message.text == CANCEL_BUTTON:
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله لیست دروس (پیشنهاد دروس)")
+        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return
     
     if message.text == '✅ اتمام پیشنهاد دروس':
         if len(courses_list) == 0:
@@ -479,7 +511,9 @@ def get_courses(message, full_name, student_id, major, courses_list):
 لطفاً حداقل <b>یک درس</b> را با فرمت زیر وارد کنید:
 <b>نام درس - دانشکده</b>
 مثال: ریاضی ۲ - علوم پایه'''
-            bot.reply_to(message, text, parse_mode='HTML')
+            markup = ReplyKeyboardMarkup(resize_keyboard=True)
+            markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
+            bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
             bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
             return
         
@@ -493,7 +527,9 @@ def get_courses(message, full_name, student_id, major, courses_list):
 <b>نام درس - دانشکده</b>
 مثال: ریاضی ۲ - علوم پایه\n
 یا اگر تمام دروس را وارد کرده‌اید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
-        bot.reply_to(message, text, parse_mode='HTML')
+        markup = ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
+        bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
         bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
         return
     
@@ -509,7 +545,9 @@ def get_courses(message, full_name, student_id, major, courses_list):
 {chr(10).join([f"🔸 {c}" for c in courses_list])}\n
 لطفاً درس بعدی را وارد کنید یا روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
     
-    bot.reply_to(message, text, parse_mode='HTML')
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
 
 def send_courses_to_admin(message, full_name, student_id, major, courses_list):
@@ -530,23 +568,13 @@ def send_courses_to_admin(message, full_name, student_id, major, courses_list):
     
     try:
         bot.send_message(ADMIN_GROUP_ID, admin_message, parse_mode='HTML')
-        
-        markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
-        markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
-        markup.add('📚 پیشنهاد دروس ترم تابستان')
-        markup.add('🤔 دانشجوها چی می‌گن؟')
-        
         text = '''✅ <b>پیشنهاد دروس شما با موفقیت ثبت شد!</b> 👌🏻
 از مشارکت شما در بهبود کیفیت دروس تابستان سپاسگزاریم.
 اطلاعات شما به آموزش دانشگاه ارسال خواهد شد.'''
-        bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+        bot.reply_to(message, text, parse_mode='HTML', reply_markup=get_main_menu_keyboard())
         
     except Exception as e:
         print(f"خطا در ارسال به گروه: {e}")
         text = '''❌ متأسفانه ارسال پیشنهادات با مشکل مواجه شد.
 لطفاً ساعاتی دیگر مجدد تلاش کنید.'''
-        markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
-        markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
-        markup.add('📚 پیشنهاد دروس ترم تابستان')
-        markup.add('🤔 دانشجوها چی می‌گن؟')
-        bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+        bot.reply_to(message, text, parse_mode='HTML', reply_markup=get_main_menu_keyboard())
