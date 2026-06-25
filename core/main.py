@@ -9,6 +9,10 @@ from telebot import types
 
 load_dotenv()
 API_TOKEN = os.environ.get('API_TOKEN')
+ADMIN_ID = os.environ.get('ADMIN_ID')
+ADMIN_GROUP_ID = os.environ.get('ADMIN_GROUP_ID')
+CHANNEL_ID = os.environ.get('CHANNEL_ID')
+COLLAB_CHANNEL_ID = os.environ.get('COLLAB_CHANNEL_ID')
 bot = telebot.TeleBot(API_TOKEN)
 
 IRAN_TZ = pytz.timezone('Asia/Tehran')
@@ -72,7 +76,22 @@ def init_database():
             date_shamsi TEXT
         )
     ''')
-    
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pending_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
+            content TEXT,
+            message_id INTEGER,
+            admin_id INTEGER,
+            admin_username TEXT,
+            status TEXT,
+            timestamp TEXT,
+            date_shamsi TEXT
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -149,7 +168,29 @@ def save_course_suggestion(user_id, username, full_name, student_id, major, cour
     conn.commit()
     conn.close()
 
-# ---------- هندلرهای ربات ----------
+def save_pending_message(user_id, username, content, message_id):
+    gregorian, shamsi = get_current_time()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO pending_messages (user_id, username, content, message_id, status, timestamp, date_shamsi)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, username, content, message_id, 'pending', gregorian, shamsi))
+    conn.commit()
+    conn.close()
+    return cursor.lastrowid
+
+def update_pending_message_status(pending_id, status, admin_id, admin_username):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE pending_messages 
+        SET status = ?, admin_id = ?, admin_username = ?
+        WHERE id = ?
+    ''', (status, admin_id, admin_username, pending_id))
+    conn.commit()
+    conn.close()
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user = message.from_user
@@ -228,7 +269,7 @@ def receive_feedback(message):
 {user_feedback}'''
     
     try:
-        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_admin, parse_mode='HTML')
+        bot.send_message(ADMIN_GROUP_ID, feedback_to_admin, parse_mode='HTML')
         text = '''ممنون بابت ارسال بازخوردت! 🌱
 پیام به مسئولین نشریه ارسال شد. درصورت ارسال پاسخ توسط مسئولین نشریه، اون رو برات می‌فرستم.'''
     except Exception as e:
@@ -260,32 +301,120 @@ def receive_voice(message):
     save_feedback(user.id, user.username or "", "دانشجوها چی می‌گن", user_feedback)
     log_user_action(user.id, user.username or "", "STUDENT_VOICE_SEND", f"ارسال نظر: {user_feedback[:50]}...")
     
-    feedback_to_telegram = f'''#ارسالی_شما
+    save_pending_message(user.id, user.username or "", user_feedback, message.message_id)
+    
+    feedback_to_telegram = f'''📨 <b>پیام جدید از بخش "دانشجوها چی می‌گن؟"</b>
+
+#ارسالی_شما
 🗣 « <i>{user_feedback}</i> »\n
 <a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
 <b>🔭 رصد | راوی صدای دانشجو
 🆔 @rasad_iust</b>'''
-    
-    feedback_to_bale = f'''#ارسالی_شما
-🗣 « _{user_feedback}_ »\n
-[📬 شما هم دیدگاه خود را ارسال کنید.](https://ble.ir/MsngrBot?start=473399195A)\n
-🔭 *رصد | راوی صدای دانشجو
-🆔 @rasad_iust | [Telegram](https://t.me/rasad_iust)*'''
+
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    approve_button = types.InlineKeyboardButton("✅ تایید و ارسال به کانال", callback_data=f"approve_{user.id}")
+    reject_button = types.InlineKeyboardButton("❌ رد", callback_data=f"reject_{user.id}")
+    keyboard.add(approve_button, reject_button)
     
     try:
-        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), 'پیام جدید از بخش\n <b>🤔 دانشجوها چی می‌گن؟</b>:', parse_mode='HTML')
-        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_telegram, parse_mode='HTML', disable_web_page_preview=True)
-        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), feedback_to_bale, parse_mode='HTML', disable_web_page_preview=True)
-        text = '''ممنون بابت ارسال بازخوردت! 🌱
-پیام به مسئولین نشریه ارسال شد.'''
+        sent_message = bot.send_message(ADMIN_GROUP_ID, feedback_to_telegram, parse_mode='HTML', disable_web_page_preview=True, reply_markup=keyboard)
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE pending_messages 
+            SET message_id = ?
+            WHERE user_id = ? AND status = 'pending'
+            ORDER BY id DESC LIMIT 1
+        ''', (sent_message.message_id, user.id))
+        conn.commit()
+        conn.close()
+        
+        text = '''✅ پیام شما با موفقیت به ادمین‌ها ارسال شد!
+پس از تایید، در کانال منتشر خواهد شد.'''
+        
     except Exception as e:
-        text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
+        print(f"خطا در ارسال به گروه: {e}")
+        text = '''❌ متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
     
     markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
     markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
     markup.add('📚 پیشنهاد دروس ترم تابستان')
     markup.add('🤔 دانشجوها چی می‌گن؟')
     bot.reply_to(message, text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
+def handle_approval(call):
+    admin = call.from_user
+    data = call.data.split('_')
+    action = data[0]
+    user_id = int(data[1])
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM pending_messages 
+        WHERE user_id = ? AND status = 'pending'
+        ORDER BY id DESC LIMIT 1
+    ''', (user_id,))
+    pending = cursor.fetchone()
+    conn.close()
+    
+    if not pending:
+        bot.answer_callback_query(call.id, "❌ این پیام قبلاً بررسی شده است!")
+        return
+    
+    if action == 'approve':
+        try:
+            channel_message = f'''🗣 « <i>{pending['content']}</i> »\n
+<a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
+<b>🔭 رصد | راوی صدای دانشجو
+🆔 @rasad_iust</b>'''
+            
+            bot.send_message(CHANNEL_ID, channel_message, parse_mode='HTML', disable_web_page_preview=True)
+            
+            update_pending_message_status(pending['id'], 'approved', admin.id, admin.username or "")
+            log_user_action(admin.id, admin.username or "", "APPROVE_MESSAGE", f"تایید پیام کاربر {user_id}")
+            
+            admin_message = f'''✅ <b>پیام تایید شد!</b>
+
+#ارسالی_شما
+🗣 « <i>{pending['content']}</i> »\n
+<a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
+<b>🔭 رصد | راوی صدای دانشجو
+🆔 @rasad_iust</b>
+
+👤 <b>تایید شده توسط:</b> {admin.first_name} (@{admin.username or 'ندارد'})
+⏰ <b>زمان تایید:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}'''
+            
+            bot.edit_message_text(admin_message, ADMIN_GROUP_ID, message_id=call.message.message_id, parse_mode='HTML')
+            
+            bot.answer_callback_query(call.id, "✅ پیام تایید و به کانال ارسال شد!")
+            
+            bot.send_message(ADMIN_GROUP_ID, f"✅ پیام با تایید {admin.first_name} به کانال ارسال شد!", parse_mode='HTML')
+            
+        except Exception as e:
+            bot.answer_callback_query(call.id, f"❌ خطا: {str(e)}")
+            print(f"خطا در ارسال به کانال: {e}")
+    
+    elif action == 'reject':
+        update_pending_message_status(pending['id'], 'rejected', admin.id, admin.username or "")
+        log_user_action(admin.id, admin.username or "", "REJECT_MESSAGE", f"رد پیام کاربر {user_id}")
+        
+        admin_message = f'''❌ <b>پیام رد شد!</b>\n
+#ارسالی_شما
+🗣 « <i>{pending['content']}</i> »\n
+<a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
+<b>🔭 رصد | راوی صدای دانشجو
+🆔 @rasad_iust</b>\n
+👤 <b>رد شده توسط:</b> {admin.first_name} (@{admin.username or 'ندارد'})
+⏰ <b>زمان رد:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}'''
+        
+        bot.edit_message_text(ADMIN_GROUP_ID, message_id=call.message.message_id, parse_mode='HTML')
+        
+        bot.answer_callback_query(call.id, "❌ پیام رد شد!")
+        
+        bot.send_message(ADMIN_GROUP_ID, f"❌ پیام با رد {admin.first_name} مواجه شد!", parse_mode='HTML')
 
 @bot.message_handler(func=lambda message: message.text == '📚 پیشنهاد دروس ترم تابستان')
 def suggest_courses(message):
@@ -359,12 +488,10 @@ def get_courses(message, full_name, student_id, major, courses_list):
         return
     
     if ' - ' not in message.text:
-        text = '''❌ فرمت وارد شده صحیح نیست!
-
+        text = '''❌ فرمت وارد شده صحیح نیست!\n
 لطفاً درس را به‌صورت زیر وارد کنید:
 <b>نام درس - دانشکده</b>
-مثال: ریاضی ۲ - علوم پایه
-
+مثال: ریاضی ۲ - علوم پایه\n
 یا اگر تمام دروس را وارد کرده‌اید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
         bot.reply_to(message, text, parse_mode='HTML')
         bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
@@ -377,11 +504,9 @@ def get_courses(message, full_name, student_id, major, courses_list):
     
     log_user_action(user.id, user.username or "", "COURSE_ADD", f"درس اضافه شد: {course_name} - {faculty}")
     
-    text = f'''✅ درس <b>{course_name}</b> با موفقیت اضافه شد!
-
+    text = f'''✅ درس <b>{course_name}</b> با موفقیت اضافه شد!\n
 📚 دروس ثبت‌شده تا الان:
-{chr(10).join([f"🔸 {c}" for c in courses_list])}
-
+{chr(10).join([f"🔸 {c}" for c in courses_list])}\n
 لطفاً درس بعدی را وارد کنید یا روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
     
     bot.reply_to(message, text, parse_mode='HTML')
@@ -404,7 +529,7 @@ def send_courses_to_admin(message, full_name, student_id, major, courses_list):
 '''
     
     try:
-        bot.send_message(os.environ.get('ADMIN_GROUP_ID'), admin_message, parse_mode='HTML')
+        bot.send_message(ADMIN_GROUP_ID, admin_message, parse_mode='HTML')
         
         markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='Chat with رصدخـــان')
         markup.add(KeyboardButton('🔗 لینک‌های رصد'), KeyboardButton('🗣 ارائۀ نظرات'))
@@ -425,5 +550,3 @@ def send_courses_to_admin(message, full_name, student_id, major, courses_list):
         markup.add('📚 پیشنهاد دروس ترم تابستان')
         markup.add('🤔 دانشجوها چی می‌گن؟')
         bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
-
-bot.infinity_polling()
