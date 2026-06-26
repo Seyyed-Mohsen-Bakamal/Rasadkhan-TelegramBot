@@ -219,12 +219,10 @@ def membership_required(func):
                 return func(message)
             else:
                 log_user_action(user_id, username, "MEMBERSHIP_CHECK", "کاربر عضو کانال نیست")
-                text = f"""⚠️ کاربر عزیز، برای استفاده از این بخش باید عضو کانال ما باشید.
-
-🔹 لطفاً ابتدا عضو کانال [رصد علم و صنعت](https://t.me/rasad_iust) بشید و بعد دوباره امتحان کنید.
-
-✅ بعد از عضویت، دکمه مورد نظر رو دوباره بزنید."""
-                bot.reply_to(message, text, parse_mode='Markdown', disable_web_page_preview=True)
+                text = '''دِ نشد دیگه!!! اینه مرام لوتی‌گری؟ 😕\n
+🔹 زحمتت اول عضو کانال <b><a href="https://t.me/rasad_iust">رصد علم و صنعت</a></b> شو و بعد دوباره بیا سراغم.\n
+✅ بعد از عضویت، قابلیت مورد نظرت رو دوباره انتخاب کن.'''
+                bot.reply_to(message, text, parse_mode='HTML', disable_web_page_preview=True)
                 return
         except Exception as e:
             log_user_action(user_id, username, "MEMBERSHIP_ERROR", f"خطا در بررسی عضویت: {str(e)}")
@@ -255,7 +253,7 @@ def send_options(message):
 🗣 <u>شنیدن نظرات، پیشنهادات و انتقاداتت به گوش جانننن</u>، کاملا هم ناشناس.
 (حتی می‌تونی بهمون پیشنهاد بدی که جای چی توی ربات خالیه. <b>اصن شما جون بخواه.</b>)
 🔗 دریافت لینک‌های مرتبط با <b>نشریۀ رصد علم و صنعت در پیام‌رسان‌های مختلف</b> (مهمون ما باش!)
-📚 پیشنهاد دروسی که قراره توی <u>ترم تابستون</u> ارائه بشه'''
+📚 پیشنهاد دروسی که قراره توی <u>ترم تابستون</u> ارائه بشه.'''
     bot.send_message(message.chat.id, text, parse_mode='HTML')
 
 @bot.message_handler(func=lambda message: message.text == '🔗 لینک‌های رصد')
@@ -267,18 +265,18 @@ def send_links(message):
 نشونی <b>نشریۀ رصد دانشگاه علم و صنعت</b>:\n
 🔹 کانال رصد علم و صنعت در تلگرام
 t.me/rasad_iust\n
-🔸 گروه رصدخــــــانه
+🔭 گروه رصدخــــــانه
 t.me/rasadkhane_iust\n
 🤖 این‌جانب (ربات رصدخــــــان)
 t.me/rasadkhan_bot\n
-🔹 کانال رصد علم و صنعت در بله
+🔸 کانال رصد علم و صنعت در بله
 ble.ir/rasad_iust'''
     
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     button1 = types.InlineKeyboardButton('🔹 کانال تلگرام', url='https://t.me/rasad_iust')
     button2 = types.InlineKeyboardButton('🔭 رصدخــــــانه', url='https://t.me/rasadkhane_iust')
     button3 = types.InlineKeyboardButton('🤖 رصدخــــــان', url='https://t.me/rasadkhan_bot')
-    button4 = types.InlineKeyboardButton('🔹 کانال بله', url='https://ble.ir/join/rasad_iust')
+    button4 = types.InlineKeyboardButton('🔸 کانال بله', url='https://ble.ir/join/rasad_iust')
     keyboard.row(button2, button1)
     keyboard.row(button4, button3)
     bot.reply_to(message, text, parse_mode='HTML', disable_web_page_preview=True, reply_markup=keyboard)
@@ -354,7 +352,7 @@ def receive_voice(message):
     save_pending_message(user.id, user.username or "", user_feedback, message.message_id)
     
     feedback_to_telegram = f'''📨 پیام جدید از بخش 
-<b>دانشجوها چی می‌گن؟</b>\n
+<b>دانشجوها چی می‌گن؟</b>:\n
 #ارسالی_شما
 🗣 « <i>{user_feedback}</i> »\n
 <a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
@@ -439,8 +437,7 @@ def handle_approval(call):
             
             bot.answer_callback_query(call.id, "✅ پیام تایید و به کانال ارسال شد!")
             
-            bot.send_message(ADMIN_GROUP_ID, f"✅ پیام با تایید {admin.first_name} به کانال ارسال شد!", parse_mode='HTML')
-            bot.send_message(ADMIN_GROUP_ID, 'مشتیا حالا که پیامو تأیید کردین این پیام پایینیه رو کپ بزنین توی بله!')
+            bot.send_message(ADMIN_GROUP_ID, 'مشتیا حالا که پیامو تأیید کردین این پیام پایینیه رو کپ بزنین توی بله! 👇🏻')
             bot.send_message(ADMIN_GROUP_ID, bale_message, disable_web_page_preview=True)
             
         except Exception as e:
@@ -463,8 +460,6 @@ def handle_approval(call):
         bot.edit_message_text(admin_message, ADMIN_GROUP_ID, message_id=call.message.message_id, parse_mode='HTML', reply_markup=None)
         
         bot.answer_callback_query(call.id, "❌ پیام رد شد!")
-        
-        bot.send_message(ADMIN_GROUP_ID, f"❌ پیام با رد {admin.first_name} مواجه شد!", parse_mode='HTML')
 
 @bot.message_handler(func=lambda message: message.text == '📚 پیشنهاد دروس ترم تابستان')
 @membership_required
@@ -637,7 +632,7 @@ def send_courses_to_admin(message, full_name, student_id, major, courses_list, a
 👤 <b>نام و نام خانوادگی:</b> {full_name}
 🎓 <b>شماره دانشجویی:</b> {student_id}
 📚 <b>رشته و ورودی:</b> {major}
-📌 <b>شرایط حضور:</b> {attendance_text}\n
+📌 <b>شرایط حضور:</b>\n{attendance_text}\n
 📝 <b>لیست دروس پیشنهادی:</b>
 {courses_text}
 '''
@@ -657,3 +652,6 @@ def send_courses_to_admin(message, full_name, student_id, major, courses_list, a
         text = '''❌ متأسفانه ارسال پیشنهادات با مشکل مواجه شد.
 لطفاً ساعاتی دیگر مجدد تلاش کنید.'''
         bot.reply_to(message, text, parse_mode='HTML', reply_markup=get_main_menu_keyboard())
+
+if __name__ == '__main__':
+    bot.infinity_polling()
