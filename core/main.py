@@ -10,6 +10,7 @@ from telebot import types
 load_dotenv()
 API_TOKEN = os.environ.get('API_TOKEN')
 ADMIN_ID = os.environ.get('ADMIN_ID')
+ADMIN_IDS = [int(id.strip()) for id in os.environ.get('ADMIN_IDs', '').split(',') if id.strip()]
 ADMIN_GROUP_ID = os.environ.get('ADMIN_GROUP_ID')
 CHANNEL_ID = os.environ.get('CHANNEL_ID')
 COLLAB_CHANNEL_ID = os.environ.get('COLLAB_CHANNEL_ID')
@@ -219,7 +220,7 @@ def membership_required(func):
                 return func(message)
             else:
                 log_user_action(user_id, username, "MEMBERSHIP_CHECK", "کاربر عضو کانال نیست")
-                text = '''عه!!! داشتیم!؟؟\n
+                text = '''عه!!! !داشتیم؟؟\n
 عضو <b><a href="https://t.me/rasad_iust">کانـــال رصد</a></b> نیستی هنوز.
 <u>تیک عضویت</u> رو بزن و بیا قدمت روی چشم جاناا.'''
                 bot.reply_to(message, text, parse_mode='HTML', disable_web_page_preview=True)
@@ -229,6 +230,10 @@ def membership_required(func):
             bot.reply_to(message, "❌ خطایی در بررسی عضویت رخ داد. لطفاً دوباره تلاش کنید.")
             return
     return wrapper
+
+def send_photo_with_caption(message, text, markup, photo_path):
+    with open(photo_path, 'rb') as photo:
+        bot.send_photo(chat_id=message.chat.id, photo=photo, caption=text, parse_mode='HTML', reply_to_message_id=message.message_id, reply_markup=markup)
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -255,6 +260,53 @@ def send_options(message):
 🔗 دریافت لینک‌های مرتبط با <b>نشریۀ رصد علم و صنعت در پیام‌رسان‌های مختلف</b> (مهمون ما باش!)
 📚 پیشنهاد دروسی که قراره توی <u>ترم تابستون</u> ارائه بشه.'''
     bot.send_message(message.chat.id, text, parse_mode='HTML')
+
+@bot.message_handler(commands=['send'])
+def send_to_channel_command(message):
+    user = message.from_user
+    if str(user.id) not in ADMIN_IDs:
+        bot.reply_to(message, "اینجا ورود افراد متفرقه ممنوعه. بوس بهت. 🤝")
+        return
+    
+    log_user_action(user.id, user.username or "", "SEND_TO_CHANNEL_START", "شروع فرآیند ارسال مستقیم به کانال")
+    text = "📝 متنی که می‌خوای تو کانال منتشر بشه رو بفرست:"
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton(CANCEL_BUTTON))
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+    bot.register_next_step_handler(message, receive_text_for_channel)
+
+def receive_text_for_channel(message):
+    user = message.from_user
+    if str(user.id) not in ADMIN_IDs:
+        return
+    
+    if message.text == CANCEL_BUTTON:
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو ارسال مستقیم به کانال")
+        return_to_main_menu(message, "❌ کنکـــــــله")
+        return
+    
+    content = message.text
+    channel_message = f'''#ارسالی_شما
+🗣 « <i>{content}</i> »\n
+📬 <a href="https://t.me/rasadkhan_bot">دیدگاه خود را در بخش «دانشجوها چی می‌گن» ربات ارسال کنید.</a>\n
+🔭 <b>رصد | راوی صدای دانشجو
+🆔 @rasad_iust</b>'''
+    bale_message = f'''#ارسالی_شما
+🗣 « _{content}_ »\n
+[📬 شما هم دیدگاه خود را ارسال کنید.](https://ble.ir/MsngrBot?start=473399195A)\n
+🔭 *رصد | راوی صدای دانشجو
+🆔 @rasad_iust | [Telegram](https://t.me/rasad_iust)*'''
+
+    
+    try:
+        bot.send_message(CHANNEL_ID, channel_message, parse_mode='HTML', disable_web_page_preview=True)
+        bot.send_message(ADMIN_GROUP_ID, 'مشتیا حالا که پیامو تأیید کردین این پیام پایینیه رو کپ بزنین توی بله! 👇🏻')
+        bot.send_message(ADMIN_GROUP_ID, bale_message, disable_web_page_preview=True)
+        log_user_action(user.id, user.username or "", "SEND_TO_CHANNEL_SUCCESS", f"ارسال مستقیم به کانال: {content[:50]}...")
+        bot.reply_to(message, "✅ حله آقا!", reply_markup=get_main_menu_keyboard())
+    except Exception as e:
+        log_user_action(user.id, user.username or "", "SEND_TO_CHANNEL_ERROR", f"خطا: {str(e)}")
+        bot.reply_to(message, f"❌ خطا در ارسال: {str(e)}", reply_markup=get_main_menu_keyboard())
 
 @bot.message_handler(func=lambda message: message.text == '🔗 لینک‌های رصد')
 def send_links(message):
@@ -301,7 +353,7 @@ def receive_feedback(message):
     user = message.from_user
     if message.text == CANCEL_BUTTON:
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در بخش ارائۀ نظرات")
-        return_to_main_menu(message, "❌ ارسال نظر لغو شد.")
+        return_to_main_menu(message, "❌ عه! چرا پشیمون شدی؟! منتظر بودم.")
         return
     user_feedback = message.text
     
@@ -326,23 +378,24 @@ def student_voice(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "STUDENT_VOICE_START", "شروع فرآیند دانشجوها چی می‌گن")
     
-    text = '''نظرت در مورد موضوع مطرح شده تو کانال رو فرمایش کن. 
-پیامت <u>به‌صورت ناشناس</u> به بروبچ پشت صحنه می‌رسه و بعد از تأیید، منتظر دیدن پیامت توی کانال باش.
-
+    text1 = '' #summary of channel post
+    text2 = '''نظرت در مورد این موضوع رو فرمایش کن. 
+پیامت <u>به‌صورت ناشناس</u> به بروبچ پشت صحنه می‌رسه و بعد از تأیید، منتظر دیدن پیامت توی کانال باش.\n
 می‌پرسی تأیید چیه؟
 تایید یعنی ستونـــای پشت صحنه پیام رو از لحاظ <u>محدودیت‌های حقوقی نشریات</u>، بررسی می‌کنن که مثلا توهین، افترا و اینا توی متن پیام‌ها نباشه. در این صورت پیامت، آمادههه برای پرتااابه. 🚀
 [<b>پیام‌ها قد جذابیت تو زیادن</b>] بپا توی ترافیک نمونی! 🚙'''
-    
+    text = text1 + '\n' + text2
+
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(KeyboardButton(CANCEL_BUTTON))
-    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+    send_photo_with_caption(message, text, markup, 'assets/student_voice8.jpg')
     bot.register_next_step_handler(message, receive_voice)
 
 def receive_voice(message):
     user = message.from_user
     if message.text == CANCEL_BUTTON:
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در بخش دانشجوها چی می‌گن")
-        return_to_main_menu(message, "❌ ارسال نظر لغو شد.")
+        return_to_main_menu(message, "❌ عه! چرا پشیمون شدی؟! منتظر بودم.")
         return
     user_feedback = message.text
     
@@ -355,7 +408,7 @@ def receive_voice(message):
 <b>دانشجوها چی می‌گن؟</b>:\n
 #ارسالی_شما
 🗣 « <i>{user_feedback}</i> »\n
-<a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
+📬 <a href="https://t.me/rasadkhan_bot">دیدگاه خود را در بخش «دانشجوها چی می‌گن» ربات ارسال کنید.</a>\n
 <b>🔭 رصد | راوی صدای دانشجو
 🆔 @rasad_iust</b>'''
     keyboard = types.InlineKeyboardMarkup(row_width=2)
@@ -424,7 +477,8 @@ def handle_approval(call):
     
     if action == 'approve':
         try:
-            channel_message = f'''🗣 « <i>{pending['content']}</i> »\n
+            channel_message = f'''#ارسالی_شما
+🗣 « <i>{pending['content']}</i> »\n
 <a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
 <b>🔭 رصد | راوی صدای دانشجو
 🆔 @rasad_iust</b>'''
@@ -654,9 +708,8 @@ def send_courses_to_admin(message, full_name, student_id, major, courses_list, a
     
     try:
         bot.send_message(ADMIN_GROUP_ID, admin_message, parse_mode='HTML')
-        text = '''✅ <b>پیشنهاد دروس شما با موفقیت ثبت شد!</b> 👌🏻
-از مشارکت شما در بهبود کیفیت دروس تابستان سپاسگزاریم.
-اطلاعات شما به آموزش دانشگاه ارسال خواهد شد.'''
+        text = '''✅ حله! پس پیش به سوی تابستون و درس‌خون بازی.👌🏻\n
+این اطلاعات به آموزش دانشگاه ارسال میشه. منتظر نتیجه باش.'''
         bot.reply_to(message, text, parse_mode='HTML', reply_markup=get_main_menu_keyboard())
         
         if user.id in temp_data:
