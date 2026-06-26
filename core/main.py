@@ -77,6 +77,11 @@ def init_database():
         )
     ''')
 
+    cursor.execute("PRAGMA table_info(course_suggestions)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'attendance_type' not in columns:
+        cursor.execute('ALTER TABLE course_suggestions ADD COLUMN attendance_type TEXT DEFAULT NULL')
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pending_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,15 +161,15 @@ def save_feedback(user_id, username, section, content):
     conn.commit()
     conn.close()
 
-def save_course_suggestion(user_id, username, full_name, student_id, major, courses_list):
+def save_course_suggestion(user_id, username, full_name, student_id, major, courses_list, attendance_type):
     gregorian, shamsi = get_current_time()
     courses_text = '\n'.join(courses_list)
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO course_suggestions (user_id, username, full_name, student_id, major, courses, timestamp, date_shamsi)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_id, username, full_name, student_id, major, courses_text, gregorian, shamsi))
+        INSERT INTO course_suggestions (user_id, username, full_name, student_id, major, courses, attendance_type, timestamp, date_shamsi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, username, full_name, student_id, major, courses_text, attendance_type, gregorian, shamsi))
     conn.commit()
     conn.close()
 
@@ -192,6 +197,7 @@ def update_pending_message_status(pending_id, status, admin_id, admin_username):
     conn.close()
 
 CANCEL_BUTTON = '❌ لغو'
+temp_data = {}
 
 def get_main_menu_keyboard():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder='درحال چت با رصدخان (چه سعادتی!)')
@@ -203,19 +209,40 @@ def get_main_menu_keyboard():
 def return_to_main_menu(message, cancel_message="عملیات لغو شد. به منوی اصلی بازگشتید."):
     bot.reply_to(message, cancel_message, reply_markup=get_main_menu_keyboard())
 
+def membership_required(func):
+    def wrapper(message):
+        user_id = message.from_user.id
+        username = message.from_user.username or ""
+        try:
+            member = bot.get_chat_member(CHANNEL_ID, user_id)
+            if member.status in ['member', 'administrator', 'creator']:
+                return func(message)
+            else:
+                log_user_action(user_id, username, "MEMBERSHIP_CHECK", "کاربر عضو کانال نیست")
+                text = f"""⚠️ کاربر عزیز، برای استفاده از این بخش باید عضو کانال ما باشید.
+
+🔹 لطفاً ابتدا عضو کانال [رصد علم و صنعت](https://t.me/rasad_iust) بشید و بعد دوباره امتحان کنید.
+
+✅ بعد از عضویت، دکمه مورد نظر رو دوباره بزنید."""
+                bot.reply_to(message, text, parse_mode='Markdown', disable_web_page_preview=True)
+                return
+        except Exception as e:
+            log_user_action(user_id, username, "MEMBERSHIP_ERROR", f"خطا در بررسی عضویت: {str(e)}")
+            bot.reply_to(message, "❌ خطایی در بررسی عضویت رخ داد. لطفاً دوباره تلاش کنید.")
+            return
+    return wrapper
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user = message.from_user
     save_or_update_user(user.id, user.username or "", user.first_name, user.last_name or "")
     log_user_action(user.id, user.username or "", "START", "کاربر ربات را استارت کرد")
     
-    markup = get_main_menu_keyboard()
-    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
-    
     first_name = user.first_name
     text = f'''به به! ببین کی این‌جاست. 😎
 جمعمون جمع بود گلمون کم بود. خوش اومدی {first_name}.
 من <b>رصدخــــــان‌</b>ام.'''
+    markup = get_main_menu_keyboard()
     bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
 
 @bot.message_handler(commands=['options'])
@@ -249,14 +276,15 @@ ble.ir/rasad_iust'''
     
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     button1 = types.InlineKeyboardButton('🔹 کانال تلگرام', url='https://t.me/rasad_iust')
-    button2 = types.InlineKeyboardButton('🔸 گروه تلگرام', url='https://t.me/rasadkhane_iust')
-    button3 = types.InlineKeyboardButton('🤖 ربات تلگرام', url='https://t.me/rasadkhan_bot')
+    button2 = types.InlineKeyboardButton('🔭 رصدخــــــانه', url='https://t.me/rasadkhane_iust')
+    button3 = types.InlineKeyboardButton('🤖 رصدخــــــان', url='https://t.me/rasadkhan_bot')
     button4 = types.InlineKeyboardButton('🔹 کانال بله', url='https://ble.ir/join/rasad_iust')
     keyboard.row(button2, button1)
     keyboard.row(button4, button3)
     bot.reply_to(message, text, parse_mode='HTML', disable_web_page_preview=True, reply_markup=keyboard)
 
 @bot.message_handler(func=lambda message: message.text == '🗣 ارائۀ نظرات')
+@membership_required
 def send_opinion(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "OPINION_START", "شروع فرآیند ارسال نظر")
@@ -295,6 +323,7 @@ def receive_feedback(message):
     bot.reply_to(message, text, reply_markup=get_main_menu_keyboard())
 
 @bot.message_handler(func=lambda message: message.text == '🤔 دانشجوها چی می‌گن؟')
+@membership_required
 def student_voice(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "STUDENT_VOICE_START", "شروع فرآیند دانشجوها چی می‌گن")
@@ -438,6 +467,7 @@ def handle_approval(call):
         bot.send_message(ADMIN_GROUP_ID, f"❌ پیام با رد {admin.first_name} مواجه شد!", parse_mode='HTML')
 
 @bot.message_handler(func=lambda message: message.text == '📚 پیشنهاد دروس ترم تابستان')
+@membership_required
 def suggest_courses(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "COURSE_SUGGEST_START", "شروع فرآیند پیشنهاد دروس")
@@ -478,71 +508,99 @@ def get_student_id(message, full_name):
     
     student_id = message.text
     log_user_action(user.id, user.username or "", "COURSE_STUDENT_ID", f"شماره دانشجویی: {student_id}")
+
+    temp_data[user.id] = {'full_name': full_name, 'student_id': student_id}
+    text = '''🚨<b>دقت دقت:</b>🚨
+ببین کدوم یکی وصف حالته و انتخابش کن:\n
+<b>١ - چه کلاس‌ها مجازی باشد و چه حضوری توانایی شرکت در کلاس‌ها را دارم.
+٢ - تنها درصورتی که کلاس‌ها مجازی باشد توانایی شرکت در کلاس‌ها را دارم..</b>
+'''
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    button1 = types.InlineKeyboardButton("✅ حضوری و مجازی", callback_data="attendance_both")
+    button2 = types.InlineKeyboardButton("📱 فقط مجازی", callback_data="attendance_virtual_only")
+    cancel_button = types.InlineKeyboardButton(CANCEL_BUTTON, callback_data='attendance_cancel')
+    keyboard.add(button1, button2, cancel_button)
+    
+    bot.reply_to(message, text, parse_mode='HTML', reply_markup=keyboard)
+    
+@bot.callback_query_handler(func=lambda call: call.data in ['attendance_both', 'attendance_virtual_only', 'attendance_cancel'])
+def handle_attendance(call):
+    user = call.from_user
+
+    if call.data == 'attendance_cancel':
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+        bot.answer_callback_query(call.id, "❌ لغو شد.")
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله انتخاب شرایط حضور (پیشنهاد دروس)")
+        return_to_main_menu(call.message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return
+
+    attendance_type = call.data
+    
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    bot.answer_callback_query(call.id, "✅ ثبت شد.")
+    
+    data = temp_data.get(user.id)
+    if not data:
+        bot.send_message(call.message.chat.id, "❌ خطا! لطفاً دوباره شروع کن.")
+        return
+    
+    log_user_action(user.id, user.username or "", "COURSE_ATTENDANCE", "حضوری و مجازی" if attendance_type == 'attendance_both' else "فقط مجازی")
     
     text = '''لطفاً <b>رشته و ورودی</b> خود را وارد کنید:
 (مثال: مهندسی کامپیوتر - ۱۴۰٣)'''
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(KeyboardButton(CANCEL_BUTTON))
-    bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
-    bot.register_next_step_handler(message, get_major, full_name, student_id)
+    bot.send_message(call.message.chat.id, text, parse_mode='HTML', reply_markup=markup)
+    bot.register_next_step_handler(call.message, get_major, data['full_name'], data['student_id'], attendance_type)
 
-def get_major(message, full_name, student_id):
+def get_major(message, full_name, student_id, attendance_type):
     user = message.from_user
     if message.text == CANCEL_BUTTON:
-        log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله رشته و ورودی (پیشنهاد دروس)")
-        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله رشته و ورودی")
+        return_to_main_menu(message, "❌ عملیات لغو شد.")
         return
     major = message.text
-    log_user_action(user.id, user.username or "", "COURSE_MAJOR", f"رشته و ورودی: {major}")
+    log_user_action(user.id, user.username or "", "COURSE_MAJOR", major)
     
-    text = '''حالا لطفاً <b>لیست دروس پیشنهادی</b> خود را به‌صورت زیر وارد کنید:
-🔸 هر درس را <b>در یک پیام جداگانه</b> ارسال کنید
-🔹 فرمت هر درس: 
-<b>نام درس - دانشکده</b>
-مثال: ریاضی ۲ - علوم پایه\n
-📌 دقت دقت:
-• اسامی دروس <b>کامل و مطابق</b> با آموزش وارد بشه
-• اعداد با <b>یک فاصله</b> از کلمه جدا بشن (مثال: ریاضی ۲)\n
-✅ وقتی تمام دروس رو وارد کردی، دکمهٔ <b>اتمام</b> رو بزن.'''
-    
+    text = "لیست دروس رو وارد کن (هر درس جدا، فرمت: نام درس - دانشکده). بعدش اتمام بزن."
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
+    markup.row(KeyboardButton('✅ اتمام'), KeyboardButton(CANCEL_BUTTON))
     bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
-    bot.register_next_step_handler(message, get_courses, full_name, student_id, major, [])
+    bot.register_next_step_handler(message, get_courses, full_name, student_id, major, [], attendance_type)
 
-def get_courses(message, full_name, student_id, major, courses_list):
+def get_courses(message, full_name, student_id, major, courses_list, attendance_type):
     user = message.from_user
     if message.text == CANCEL_BUTTON:
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله لیست دروس (پیشنهاد دروس)")
         return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
         return
     
-    if message.text == '✅ اتمام پیشنهاد دروس':
+    if message.text == '✅ اتمام':
         if len(courses_list) == 0:
-            text = '''⚠️ هیچ درسی رو وارد نکردی مهندس!\n
-حالا که تا این‌جا اومدی حداقل یک درس رو با فرمت زیر وارد کن:
-نام درس - دانشکده
+            text = '''⚠️ شما هیچ درسی وارد نکردید!\n
+لطفاً حداقل <b>یک درس</b> را با فرمت زیر وارد کنید:
+<b>نام درس - دانشکده</b>
 مثال: ریاضی ۲ - علوم پایه'''
             markup = ReplyKeyboardMarkup(resize_keyboard=True)
-            markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
+            markup.row(KeyboardButton('✅ اتمام'), KeyboardButton(CANCEL_BUTTON))
             bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
-            bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
+            bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list, attendance_type)
             return
         
         log_user_action(user.id, user.username or "", "COURSE_COMPLETE", f"تعداد دروس: {len(courses_list)}")
-        send_courses_to_admin(message, full_name, student_id, major, courses_list)
+        send_courses_to_admin(message, full_name, student_id, major, courses_list, attendance_type)
         return
     
     if ' - ' not in message.text:
-        text = '''❌ فرمت رو اشتباه زدی! از تو بعید بود!!\n
-درس رو به‌صورت زیر وارد کن:
-نام درس - دانشکده
+        text = '''❌ فرمت وارد شده صحیح نیست!\n
+لطفاً درس را به‌صورت زیر وارد کنید:
+<b>نام درس - دانشکده</b>
 مثال: ریاضی ۲ - علوم پایه\n
-یا اگر تمام دروس رو وارد کردی، دکمهٔ اتمام رو بزن که بریم.'''
+یا اگر تمام دروس را وارد کرده‌اید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
         markup = ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
+        markup.row(KeyboardButton('✅ اتمام'), KeyboardButton(CANCEL_BUTTON))
         bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
-        bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
+        bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list, attendance_type)
         return
     
     course_name, faculty = message.text.split(' - ', 1)
@@ -552,38 +610,47 @@ def get_courses(message, full_name, student_id, major, courses_list):
     
     log_user_action(user.id, user.username or "", "COURSE_ADD", f"درس اضافه شد: {course_name} - {faculty}")
     
-    text = f'''✅ درس <b>{course_name}</b> با موفقیت اضافه شد (به کلاس‌های تابستونی سلاااام کن)!\n
+    text = f'''✅ درس <b>{course_name}</b> با موفقیت اضافه شد!\n
 📚 دروس ثبت‌شده تا الان:
 {chr(10).join([f"🔸 {c}" for c in courses_list])}\n
 لطفاً درس بعدی را وارد کنید یا روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
     
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
+    markup.row(KeyboardButton('✅ اتمام'), KeyboardButton(CANCEL_BUTTON))
     bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
-    bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list)
+    bot.register_next_step_handler(message, get_courses, full_name, student_id, major, courses_list, attendance_type)
 
-def send_courses_to_admin(message, full_name, student_id, major, courses_list):
+def send_courses_to_admin(message, full_name, student_id, major, courses_list, attendance_type):
     user = message.from_user
     
-    save_course_suggestion(user.id, user.username or "", full_name, student_id, major, courses_list)
+    save_course_suggestion(user.id, user.username or "", full_name, student_id, major, courses_list, attendance_type)
     log_user_action(user.id, user.username or "", "COURSE_SUBMIT", f"ارسال دروس به ادمین: {len(courses_list)} درس")
     
     courses_text = '\n'.join([f"🔸 {c}" for c in courses_list])
     
+    if attendance_type == 'attendance_both':
+        attendance_text = "✅ چه کلاس‌ها مجازی باشد و چه حضوری توانایی شرکت را دارم."
+    else:
+        attendance_text = "📱 تنها درصورت مجازی بودن کلاس‌ها مایل به شرکت هستم."
+    
     admin_message = f'''📚 <b>پیشنهاد دروس ترم تابستان</b>\n
 👤 <b>نام و نام خانوادگی:</b> {full_name}
 🎓 <b>شماره دانشجویی:</b> {student_id}
-📚 <b>رشته و ورودی:</b> {major}\n
+📚 <b>رشته و ورودی:</b> {major}
+📌 <b>شرایط حضور:</b> {attendance_text}\n
 📝 <b>لیست دروس پیشنهادی:</b>
 {courses_text}
 '''
     
     try:
         bot.send_message(ADMIN_GROUP_ID, admin_message, parse_mode='HTML')
-        text = '''✅ <b>پیشنهاد دروس‌ت با موفقیت ثبت شد!</b> 👌🏻
-از مشارکتت در بهبود کیفیت دروس تابستان ممنونیم.
-این اطلاعات برای آموزش دانشگاه ارسال می‌شه.'''
+        text = '''✅ <b>پیشنهاد دروس شما با موفقیت ثبت شد!</b> 👌🏻
+از مشارکت شما در بهبود کیفیت دروس تابستان سپاسگزاریم.
+اطلاعات شما به آموزش دانشگاه ارسال خواهد شد.'''
         bot.reply_to(message, text, parse_mode='HTML', reply_markup=get_main_menu_keyboard())
+        
+        if user.id in temp_data:
+            del temp_data[user.id]
         
     except Exception as e:
         print(f"خطا در ارسال به گروه: {e}")
