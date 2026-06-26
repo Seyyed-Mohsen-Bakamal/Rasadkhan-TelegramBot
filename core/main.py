@@ -381,9 +381,14 @@ def handle_approval(call):
 <a href="https://t.me/rasadkhan_bot">📬 شما هم دیدگاه خود را ارسال کنید.</a>\n
 <b>🔭 رصد | راوی صدای دانشجو
 🆔 @rasad_iust</b>'''
-            
+            bale_message = f'''#ارسالی_شما
+🗣 « _{user_feedback}_ »\n
+[📬 شما هم دیدگاه خود را ارسال کنید.](https://ble.ir/MsngrBot?start=473399195A)\n
+🔭 *رصد | راوی صدای دانشجو
+🆔 @rasad_iust | [Telegram](https://t.me/rasad_iust)*'''
             bot.send_message(CHANNEL_ID, channel_message, parse_mode='HTML', disable_web_page_preview=True)
-            
+            bot.send_message(ADMIN_GROUP_ID, 'مشتیا حالا که پیامو تأیید کردین این پیام پایینیه رو کپ بزنین توی بله!')
+            bot.send_message(ADMIN_GROUP_ID, bale_message, disable_web_page_preview=True)
             update_pending_message_status(pending['id'], 'approved', admin.id, admin.username or "")
             log_user_action(admin.id, admin.username or "", "APPROVE_MESSAGE", f"تایید پیام کاربر {user_id}")
             
