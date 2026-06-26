@@ -219,9 +219,9 @@ def membership_required(func):
                 return func(message)
             else:
                 log_user_action(user_id, username, "MEMBERSHIP_CHECK", "کاربر عضو کانال نیست")
-                text = '''دِ نشد دیگه!!! اینه مرام لوتی‌گری؟ 😕\n
-🔹 زحمتت اول عضو کانال <b><a href="https://t.me/rasad_iust">رصد علم و صنعت</a></b> شو و بعد دوباره بیا سراغم.\n
-✅ بعد از عضویت، قابلیت مورد نظرت رو دوباره انتخاب کن.'''
+                text = '''عه!!! داشتیم!؟؟\n
+عضو <b><a href="https://t.me/rasad_iust">کانـــال رصد</a></b> نیستی هنوز.
+<u>تیک عضویت</u> رو بزن و بیا قدمت روی چشم جاناا.'''
                 bot.reply_to(message, text, parse_mode='HTML', disable_web_page_preview=True)
                 return
         except Exception as e:
@@ -313,8 +313,8 @@ def receive_feedback(message):
     
     try:
         bot.send_message(ADMIN_GROUP_ID, feedback_to_admin, parse_mode='HTML')
-        text = '''ممنون بابت ارسال بازخوردت! 🌱
-پیام به مسئولین نشریه ارسال شد. درصورت ارسال پاسخ توسط مسئولین نشریه، اون رو برات می‌فرستم.'''
+        text = ''''دمت گرم.
+پیامکت به صندوق پستی قلب ما فرستاده شد. 💌'''
     except Exception as e:
         text = '''متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
     
@@ -364,28 +364,43 @@ def receive_voice(message):
     keyboard.add(approve_button, reject_button)
     
     try:
-        sent_message = bot.send_message(ADMIN_GROUP_ID, feedback_to_telegram, parse_mode='HTML', disable_web_page_preview=True, reply_markup=keyboard)
+        sent_message = bot.send_message(
+            ADMIN_GROUP_ID,
+            feedback_to_telegram,
+            parse_mode='HTML',
+            disable_web_page_preview=True,
+            reply_markup=keyboard
+        )
         
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            UPDATE pending_messages 
-            SET message_id = ?
+            SELECT id FROM pending_messages 
             WHERE user_id = ? AND status = 'pending'
             ORDER BY id DESC LIMIT 1
-        ''', (sent_message.message_id, user.id))
-        conn.commit()
+        ''', (user.id,))
+        row = cursor.fetchone()
+        if row:
+            cursor.execute('''
+                UPDATE pending_messages 
+                SET message_id = ?
+                WHERE id = ?
+            ''', (sent_message.message_id, row['id']))
+            conn.commit()
+        else:
+            print(f"هیچ pending message ای برای کاربر {user.id} پیدا نشد")
         conn.close()
         
-        text = '''✅ پیام شما با موفقیت به ادمین‌ها ارسال شد!
-پس از تایید، در کانال منتشر خواهد شد.'''
+        text = '''به‌به به این نظرت مهندس!! 👌🏻
+دریافت شد. 
+بعد از تایید، می‌فرستمش بیاد روی کانال.'''
         
     except Exception as e:
         print(f"خطا در ارسال به گروه: {e}")
         text = '''❌ متأسفانه ارسال پیام موفقیت‌آمیز نبود. لطفا ساعاتی دیگر مجدد تلاش کنید.'''
     
     bot.reply_to(message, text, reply_markup=get_main_menu_keyboard())
-
+    
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
 def handle_approval(call):
     admin = call.from_user
@@ -483,7 +498,7 @@ def get_full_name(message):
     user = message.from_user
     if message.text == CANCEL_BUTTON:
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله نام و نام خانوادگی (پیشنهاد دروس)")
-        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return_to_main_menu(message, "ترم تابستونه پَـــــر. 🕊")
         return
     full_name = message.text
     log_user_action(user.id, user.username or "", "COURSE_FULL_NAME", f"نام وارد شده: {full_name}")
@@ -498,7 +513,7 @@ def get_student_id(message, full_name):
     user = message.from_user
     if message.text == CANCEL_BUTTON:
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله شماره دانشجویی (پیشنهاد دروس)")
-        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return_to_main_menu(message, "ترم تابستونه پَـــــر. 🕊")
         return
     
     student_id = message.text
@@ -526,7 +541,7 @@ def handle_attendance(call):
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
         bot.answer_callback_query(call.id, "❌ لغو شد.")
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله انتخاب شرایط حضور (پیشنهاد دروس)")
-        return_to_main_menu(call.message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return_to_main_menu(call.message, "ترم تابستونه پَـــــر. 🕊")
         return
 
     attendance_type = call.data
@@ -552,7 +567,7 @@ def get_major(message, full_name, student_id, attendance_type):
     user = message.from_user
     if message.text == CANCEL_BUTTON:
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله رشته و ورودی")
-        return_to_main_menu(message, "❌ عملیات لغو شد.")
+        return_to_main_menu(message, "ترم تابستونه پَـــــر. 🕊")
         return
     major = message.text
     log_user_action(user.id, user.username or "", "COURSE_MAJOR", major)
@@ -567,7 +582,7 @@ def get_courses(message, full_name, student_id, major, courses_list, attendance_
     user = message.from_user
     if message.text == CANCEL_BUTTON:
         log_user_action(user.id, user.username or "", "CANCEL", "لغو در مرحله لیست دروس (پیشنهاد دروس)")
-        return_to_main_menu(message, "❌ عملیات پیشنهاد دروس لغو شد.")
+        return_to_main_menu(message, "ترم تابستونه پَـــــر. 🕊")
         return
     
     if message.text == '✅ اتمام':
