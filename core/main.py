@@ -213,8 +213,9 @@ def send_welcome(message):
     bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
     
     first_name = user.first_name
-    text = f'''سلام {first_name}. خیلی خوش اومدی.
-من <b>رصدخــــان</b> هستم. از آشنایی باهات خوشحالم. 😄🤍'''
+    text = f'''به به! ببین کی این‌جاست. 😎
+جمعمون جمع بود گلمون کم بود. خوش اومدی {first_name}.
+من <b>رصدخــــــان‌</b>ام.'''
     bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
 
 @bot.message_handler(commands=['options'])
@@ -222,13 +223,12 @@ def send_options(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "OPTIONS", "نمایش گزینه‌ها")
     
-    text = f'''<b>رصدخــــان</b> این‌جاست تا از پس کارهای متنوعی بربیاد! 😎\n
+    text = f'''<b>رصدخــــــان</b> پهلوون علموصه! 😎\n
 <b>قابلیت‌های فعلی من</b>:
-🗣 دریافت <b>نظرات، پیشنهادات و انتقادات شما</b> به‌صورت ناشناس 
-(حتی می‌تونی بهمون پیشنهاد بدی که <b>جای چی توی ربات خالیه</b>)
-🔗 دریافت <b>لینک‌های مرتبط با نشریۀ رصد علم و صنعت</b> در پیام‌رسان‌های مختلف
-📚 <b>پیشنهاد دروسی که قراره در تابستون ارائه بشه</b>
-'''
+🗣 <u>شنیدن نظرات، پیشنهادات و انتقاداتت به گوش جانننن</u>، کاملا هم ناشناس.
+(حتی می‌تونی بهمون پیشنهاد بدی که جای چی توی ربات خالیه. <b>اصن شما جون بخواه.</b>)
+🔗 دریافت لینک‌های مرتبط با <b>نشریۀ رصد علم و صنعت در پیام‌رسان‌های مختلف</b> (مهمون ما باش!)
+📚 پیشنهاد دروسی که قراره توی <u>ترم تابستون</u> ارائه بشه'''
     bot.send_message(message.chat.id, text, parse_mode='HTML')
 
 @bot.message_handler(func=lambda message: message.text == '🔗 لینک‌های رصد')
@@ -236,19 +236,20 @@ def send_links(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "LINKS", "نمایش لینک‌ها")
     
-    text = '''<b>نشریۀ رصد دانشگاه علم و صنعت</b> رو می‌تونی از طریق لینک‌های زیر دنبال کنی:\n
+    text = '''ما این‌جاییم! تو هم بیا تا گل برافشانیم و ساغر و اینا.
+نشونی <b>نشریۀ رصد دانشگاه علم و صنعت</b>:\n
 🔹 کانال رصد علم و صنعت در تلگرام
 t.me/rasad_iust\n
-🔸 گروه دیدگاه رصد در تلگرام
-t.me/rasad_comment\n
-🤖 ربات رصدخــــان
+🔸 گروه رصدخــــــانه
+t.me/rasadkhane_iust\n
+🤖 این‌جانب (ربات رصدخــــــان)
 t.me/rasadkhan_bot\n
 🔹 کانال رصد علم و صنعت در بله
 ble.ir/rasad_iust'''
     
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     button1 = types.InlineKeyboardButton('🔹 کانال تلگرام', url='https://t.me/rasad_iust')
-    button2 = types.InlineKeyboardButton('🔸 گروه تلگرام', url='https://t.me/rasad_comment')
+    button2 = types.InlineKeyboardButton('🔸 گروه تلگرام', url='https://t.me/rasadkhane_iust')
     button3 = types.InlineKeyboardButton('🤖 ربات تلگرام', url='https://t.me/rasadkhan_bot')
     button4 = types.InlineKeyboardButton('🔹 کانال بله', url='https://ble.ir/join/rasad_iust')
     keyboard.row(button2, button1)
@@ -260,9 +261,10 @@ def send_opinion(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "OPINION_START", "شروع فرآیند ارسال نظر")
     
-    text = '''رویکرد ما در رصد از اولین روز تشکیل نشریه، ارتباط دوستانه و تعامل با دانشجویان در بهترین سطح بوده و خواهد بود.
-از شما دعوت می‌کنیم نظرات، پیشنهادات و انتقادات خود درمورد هر مسئلۀ کوچک یا بزرگ در رصد رو به گوش ما برسونید تا بتونیم با همکاری شما سعی در بهبود روندمون داشته باشیم. ❤️
-لازمه به این نکته توجه کنید که پیام شما <u>به‌صورت کاملا ناشناس</u> در اختیار مسئولین نشریۀ رصد علم و صنعت قرار می‌گیره. پس می‌تونی پیام خودت رو به‌صورت واضح به ما برسونی. 🤝'''
+    text = '''هدف زندگی من، برقراری ارتباط و تعامل دوستانه تو دانشگاهه. اومدم که <b>چرخ‌دنده‌های آدمای دانشگاهمون کنار هم، مثل ساعت، دست تو دست هم بچرخن.</b>⚙️
+هر وقت فکر کردی گیری هست یا یه چراغ بالا سرت روشن شد و چیزی به ذهنت رسید برای روغن‌کاری این چرخ‌دنده‌ها، من <b>گوش جانم رو سپردم که بگی.</b>
+کلا هر چه خواست دل تنگت، <u>رصد‌خان این‌جاست تا گوش بده به دردت.</u>♥️\n
+نام و نشونتم نشود فاش کسی، غمت نباشه.'''
     
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(KeyboardButton(CANCEL_BUTTON))
@@ -297,9 +299,12 @@ def student_voice(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "STUDENT_VOICE_START", "شروع فرآیند دانشجوها چی می‌گن")
     
-    text = '''نظر خودت رو درمورد موضوع مطرح‌شده در کانال ارسال کن.
-درصورت تایید توسط ادمین‌ها، پیام شما از طریق کانال منتشر خواهد شد.
-این پیام به‌صورت <u>ناشناس</u> به‌دست ادمین‌ها خواهد رسید.'''
+    text = '''نظرت در مورد موضوع مطرح شده تو کانال رو فرمایش کن. 
+پیامت <u>به‌صورت ناشناس</u> به بروبچ پشت صحنه می‌رسه و بعد از تأیید، منتظر دیدن پیامت توی کانال باش.
+
+می‌پرسی تأیید چیه؟
+تایید یعنی ستونـــای پشت صحنه پیام رو از لحاظ <u>محدودیت‌های حقوقی نشریات</u>، بررسی می‌کنن که مثلا توهین، افترا و اینا توی متن پیام‌ها نباشه. در این صورت پیامت، آمادههه برای پرتااابه. 🚀
+[<b>پیام‌ها قد جذابیت تو زیادن</b>] بپا توی ترافیک نمونی! 🚙'''
     
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(KeyboardButton(CANCEL_BUTTON))
@@ -382,13 +387,11 @@ def handle_approval(call):
 <b>🔭 رصد | راوی صدای دانشجو
 🆔 @rasad_iust</b>'''
             bale_message = f'''#ارسالی_شما
-🗣 « _{user_feedback}_ »\n
+🗣 « _{pending['content']}_ »\n
 [📬 شما هم دیدگاه خود را ارسال کنید.](https://ble.ir/MsngrBot?start=473399195A)\n
 🔭 *رصد | راوی صدای دانشجو
 🆔 @rasad_iust | [Telegram](https://t.me/rasad_iust)*'''
             bot.send_message(CHANNEL_ID, channel_message, parse_mode='HTML', disable_web_page_preview=True)
-            bot.send_message(ADMIN_GROUP_ID, 'مشتیا حالا که پیامو تأیید کردین این پیام پایینیه رو کپ بزنین توی بله!')
-            bot.send_message(ADMIN_GROUP_ID, bale_message, disable_web_page_preview=True)
             update_pending_message_status(pending['id'], 'approved', admin.id, admin.username or "")
             log_user_action(admin.id, admin.username or "", "APPROVE_MESSAGE", f"تایید پیام کاربر {user_id}")
             
@@ -408,6 +411,8 @@ def handle_approval(call):
             bot.answer_callback_query(call.id, "✅ پیام تایید و به کانال ارسال شد!")
             
             bot.send_message(ADMIN_GROUP_ID, f"✅ پیام با تایید {admin.first_name} به کانال ارسال شد!", parse_mode='HTML')
+            bot.send_message(ADMIN_GROUP_ID, 'مشتیا حالا که پیامو تأیید کردین این پیام پایینیه رو کپ بزنین توی بله!')
+            bot.send_message(ADMIN_GROUP_ID, bale_message, disable_web_page_preview=True)
             
         except Exception as e:
             bot.answer_callback_query(call.id, f"❌ خطا: {str(e)}")
@@ -436,10 +441,12 @@ def handle_approval(call):
 def suggest_courses(message):
     user = message.from_user
     log_user_action(user.id, user.username or "", "COURSE_SUGGEST_START", "شروع فرآیند پیشنهاد دروس")
-    text = '''سلام! به بخش پیشنهاد دروس برای ترم تابستان ١۴۰۵ خوش آمدید.🌻
-در ابتدا لازم به ذکر است که دانشگاه <b>امکان فراهم‌کردن خوابگاه برای دانشجویان غیر بومی در ترم تابستان را ندارد.</b> 
-لطفاً در صورت سکونت در تهران یا توانایی اسکان در تهران، فرم زیر را تکمیل کنید.\n
-🚨 اطلاعات شما صرفاً برای ارسال به <b>آموزش دانشگاه</b> و تحلیل جمعیت خواستار دروس استفاده می‌شود و ربات <u>هیچ اطلاعات شخصی</u> مانند نام یا شمارۀ دانشجویی شما را ذخیره نمی‌کند.\n
+    text = '''اومدی بخش پیشنهاد دروس برای ترم تابستون ١۴۰۵.
+(دمت گرمه‌ها مهندس! ولی پس <u>برنامه‌هایی که برای تابستونت ریخته بودی چی؟!</u>)
+لازمه اول بهت بگم که <b>دانشگاه امکان فراهم‌کردن خوابگاه واسۀ دانشجوها رو نداره.</b> پس همین اول کاری بعد ارسال مشخصاتت، این‌که بچه‌زرنگ تهرونی یا می‌تونی تهرون بمونی یا فقط درصورتی که مجازی باشه کلاسا پایه‌ای رو دقیق مشخص کن.
+
+🚨 <u>اطلاعاتت صرفاً برای ارسال به آموزش دانشگاه و تحلیل جمعیت خواستار دروس استفاده می‌شه</u> و ربات هیچ اطلاعات شخصی مثل نام یا شمارۀ دانشجوییتو ذخیره نمی‌کنه.
+کلا <b>رصدخــــــان امینته</b>، خیالت راحت از این بابت. 😌\n
 ✅ لطفاً <b>نام و نام خانوادگی</b> خود را وارد کنید.'''
 
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -472,7 +479,7 @@ def get_student_id(message, full_name):
     student_id = message.text
     log_user_action(user.id, user.username or "", "COURSE_STUDENT_ID", f"شماره دانشجویی: {student_id}")
     
-    text = '''حالا لطفاً <b>رشته و ورودی</b> خود را وارد کنید:
+    text = '''لطفاً <b>رشته و ورودی</b> خود را وارد کنید:
 (مثال: مهندسی کامپیوتر - ۱۴۰٣)'''
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(KeyboardButton(CANCEL_BUTTON))
@@ -493,10 +500,10 @@ def get_major(message, full_name, student_id):
 🔹 فرمت هر درس: 
 <b>نام درس - دانشکده</b>
 مثال: ریاضی ۲ - علوم پایه\n
-📌 دقت کنید:
-• اسامی دروس <b>کامل و مطابق</b> با آموزش وارد شود
-• اعداد با <b>یک فاصله</b> از کلمه جدا شوند (مثال: ریاضی ۲)\n
-✅ وقتی تمام دروس را وارد کردید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
+📌 دقت دقت:
+• اسامی دروس <b>کامل و مطابق</b> با آموزش وارد بشه
+• اعداد با <b>یک فاصله</b> از کلمه جدا بشن (مثال: ریاضی ۲)\n
+✅ وقتی تمام دروس رو وارد کردی، دکمهٔ <b>اتمام</b> رو بزن.'''
     
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
@@ -512,9 +519,9 @@ def get_courses(message, full_name, student_id, major, courses_list):
     
     if message.text == '✅ اتمام پیشنهاد دروس':
         if len(courses_list) == 0:
-            text = '''⚠️ شما هیچ درسی وارد نکردید!\n
-لطفاً حداقل <b>یک درس</b> را با فرمت زیر وارد کنید:
-<b>نام درس - دانشکده</b>
+            text = '''⚠️ هیچ درسی رو وارد نکردی مهندس!\n
+حالا که تا این‌جا اومدی حداقل یک درس رو با فرمت زیر وارد کن:
+نام درس - دانشکده
 مثال: ریاضی ۲ - علوم پایه'''
             markup = ReplyKeyboardMarkup(resize_keyboard=True)
             markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
@@ -527,11 +534,11 @@ def get_courses(message, full_name, student_id, major, courses_list):
         return
     
     if ' - ' not in message.text:
-        text = '''❌ فرمت وارد شده صحیح نیست!\n
-لطفاً درس را به‌صورت زیر وارد کنید:
-<b>نام درس - دانشکده</b>
+        text = '''❌ فرمت رو اشتباه زدی! از تو بعید بود!!\n
+درس رو به‌صورت زیر وارد کن:
+نام درس - دانشکده
 مثال: ریاضی ۲ - علوم پایه\n
-یا اگر تمام دروس را وارد کرده‌اید، روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
+یا اگر تمام دروس رو وارد کردی، دکمهٔ اتمام رو بزن که بریم.'''
         markup = ReplyKeyboardMarkup(resize_keyboard=True)
         markup.row(KeyboardButton('✅ اتمام پیشنهاد دروس'), KeyboardButton(CANCEL_BUTTON))
         bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
@@ -545,7 +552,7 @@ def get_courses(message, full_name, student_id, major, courses_list):
     
     log_user_action(user.id, user.username or "", "COURSE_ADD", f"درس اضافه شد: {course_name} - {faculty}")
     
-    text = f'''✅ درس <b>{course_name}</b> با موفقیت اضافه شد!\n
+    text = f'''✅ درس <b>{course_name}</b> با موفقیت اضافه شد (به کلاس‌های تابستونی سلاااام کن)!\n
 📚 دروس ثبت‌شده تا الان:
 {chr(10).join([f"🔸 {c}" for c in courses_list])}\n
 لطفاً درس بعدی را وارد کنید یا روی دکمهٔ <b>اتمام</b> کلیک کنید.'''
@@ -573,9 +580,9 @@ def send_courses_to_admin(message, full_name, student_id, major, courses_list):
     
     try:
         bot.send_message(ADMIN_GROUP_ID, admin_message, parse_mode='HTML')
-        text = '''✅ <b>پیشنهاد دروس شما با موفقیت ثبت شد!</b> 👌🏻
-از مشارکت شما در بهبود کیفیت دروس تابستان سپاسگزاریم.
-اطلاعات شما به آموزش دانشگاه ارسال خواهد شد.'''
+        text = '''✅ <b>پیشنهاد دروس‌ت با موفقیت ثبت شد!</b> 👌🏻
+از مشارکتت در بهبود کیفیت دروس تابستان ممنونیم.
+این اطلاعات برای آموزش دانشگاه ارسال می‌شه.'''
         bot.reply_to(message, text, parse_mode='HTML', reply_markup=get_main_menu_keyboard())
         
     except Exception as e:
